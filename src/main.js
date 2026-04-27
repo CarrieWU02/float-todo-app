@@ -75,14 +75,11 @@ let tray = null;
 let appData = loadData();
 let isQuitting = false;
 
-// ─── 点击聚焦时置顶，失焦时沉底 ────────────────────────────────────────────
+// ─── 置顶 / 沉底（仅用于点击聚焦时浮出，不穿透全屏）────────────────────────
 function bringToFront() {
   if (!mainWindow) return;
-  if (process.platform === 'darwin') {
-    mainWindow.setAlwaysOnTop(true, 'floating', 1);
-  } else {
-    mainWindow.setAlwaysOnTop(true, 'screen-saver');
-  }
+  mainWindow.setAlwaysOnTop(true, 'normal');
+  mainWindow.focus();
 }
 
 function sendToBack() {
@@ -119,9 +116,9 @@ function createWindow() {
     },
   });
 
-  // macOS: 跨工作区可见
+  // macOS: 不跟随进入全屏空间，只在当前普通桌面显示
   if (process.platform === 'darwin') {
-    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    mainWindow.setVisibleOnAllWorkspaces(false);
   }
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
