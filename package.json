@@ -35,20 +35,13 @@
       "icon": "src/assets/icon.icns",
       "target": [
         {
-          "target": "dmg",
+          "target": "zip",
           "arch": [
             "arm64",
             "x64"
           ]
         }
       ]
-    },
-    "dmg": {
-      "title": "FloatTodo",
-      "window": {
-        "width": 540,
-        "height": 380
-      }
     },
     "win": {
       "icon": "src/assets/icon.ico",
