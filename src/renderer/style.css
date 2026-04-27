@@ -64,6 +64,7 @@ html, body {
   height: 100%;
   background: transparent;
   overflow: hidden;
+  min-width: 280px;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
                'Hiragino Sans GB', 'Segoe UI', sans-serif;
   font-size: 13px;
@@ -73,7 +74,8 @@ html, body {
 
 /* ── App 壳体 ──────────────────────────────────────────────────────────────── */
 #app {
-  width: 380px;
+  width: 100%;   /* 跟随窗口宽度自适应 */
+  height: 100%;
   background: var(--bg-shell);
   border-radius: var(--r-shell);
   box-shadow: var(--shadow-shell);
@@ -230,6 +232,8 @@ html, body {
 .main-body {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   background: var(--bg-page);
 }
@@ -238,8 +242,11 @@ html, body {
 .panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   padding: 14px 14px 12px;
   gap: 10px;
+  overflow: hidden;
 }
 
 .panel.hidden { display: none; }
@@ -528,7 +535,8 @@ html, body {
 
 /* ── 任务列表 ──────────────────────────────────────────────────────────────── */
 .todo-list-wrap {
-  max-height: 220px;
+  flex: 1;
+  min-height: 80px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(244,114,182,0.18) transparent;
@@ -909,7 +917,9 @@ html, body {
 
 /* 长期事项列表高度 */
 .lt-list-wrap {
-  max-height: 200px;
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
 }
 
 /* 长期事项标签徽章 */
@@ -1830,4 +1840,15 @@ body.collapsed .main-body { display: none; }
 }
 [data-theme="mono"] .report-body::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.15);
+}
+
+/* ── 空状态图标：mono 主题换成 💡 ── */
+[data-theme="mono"] .empty-icon {
+  font-size: 0;        /* 隐藏原始 emoji 文字 */
+}
+[data-theme="mono"] .empty-icon::after {
+  content: '💡';
+  font-size: 28px;
+  animation: float 3s ease-in-out infinite;
+  display: inline-block;
 }

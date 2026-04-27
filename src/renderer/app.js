@@ -16,6 +16,7 @@
   let isLocked = false;  // 锁定位置：true=不可拖动，false=可拖动
   let currentTheme = 'default'; // 'default' | 'mono'
   let saveTimer = null;
+  let userResized = false;  // 用户手动拖拽过尺寸后不再自动调整高度
 
   // ── 工具 ──────────────────────────────────────────────────────────────────
   function todayStr() {
@@ -101,15 +102,23 @@
   // ── 窗口尺寸自适应 ────────────────────────────────────────────────────────
   function renderWindowSize() {
     if (isCollapsed) {
+      userResized = false; // 折叠后重置，展开时用内容高度初始化一次
       window.electronAPI.setWindowSize(54, 54);
-    } else {
-      const app = document.getElementById('app');
-      if (app) {
-        const h = Math.min(Math.max(app.scrollHeight + 2, 320), 680);
-        window.electronAPI.setWindowSize(380, h);
+    } else if (!userResized) {
+      // 用户尚未手动拖拽过 → 用内容高度自动撑高
+      const appEl = document.getElementById('app');
+      if (appEl) {
+        const h = Math.min(Math.max(appEl.scrollHeight + 2, 320), 900);
+        window.electronAPI.setWindowSize(0, h);
       }
     }
+    // userResized=true 时什么都不做，窗口保持用户设定的尺寸
   }
+
+  // 监听窗口 resize 事件，标记用户主动调整过尺寸
+  window.addEventListener('resize', () => {
+    if (!isCollapsed) userResized = true;
+  });
 
   // ══════════════════════════════════════════════════════════════════════════
   //  每日待办

@@ -92,8 +92,8 @@ function createWindow() {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
 
   const savedBounds = appData.windowBounds;
-  const winWidth = 380;
-  const winHeight = 580;
+  const winWidth  = savedBounds?.width  || 380;
+  const winHeight = savedBounds?.height || 580;
   const defaultX = sw - winWidth - 20;
   const defaultY = sh - winHeight - 20;
 
@@ -105,7 +105,9 @@ function createWindow() {
     frame: false,
     transparent: true,
     alwaysOnTop: false,
-    resizable: false,
+    resizable: true,
+    minWidth: 280,
+    minHeight: 320,
     skipTaskbar: true,
     hasShadow: false,
     vibrancy: null,
@@ -127,12 +129,14 @@ function createWindow() {
   mainWindow.on('focus', () => bringToFront());
   mainWindow.on('blur',  () => sendToBack());
 
-  // 保存窗口位置
-  mainWindow.on('moved', () => {
+  // 保存窗口位置和尺寸
+  const saveBounds = () => {
     const bounds = mainWindow.getBounds();
-    appData.windowBounds = { x: bounds.x, y: bounds.y };
+    appData.windowBounds = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
     saveData(appData);
-  });
+  };
+  mainWindow.on('moved', saveBounds);
+  mainWindow.on('resized', saveBounds);
 
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
@@ -231,8 +235,16 @@ ipcMain.on('send-to-back', () => {});
 
 ipcMain.on('set-window-size', (_, { width, height }) => {
   if (mainWindow) {
-    const [x, y] = mainWindow.getPosition();
-    mainWindow.setBounds({ x, y, width, height }, true);
+    // 用户手动拖拽时不覆盖尺寸，只在折叠/展开时生效
+    const [cw, ch] = mainWindow.getSize();
+    // 折叠状态（54x54）直接应用，展开时只更新高度不重置宽度
+    if (width === 54 && height === 54) {
+      const [x, y] = mainWindow.getPosition();
+      mainWindow.setBounds({ x, y, width: 54, height: 54 }, true);
+    } else {
+      const [x, y] = mainWindow.getPosition();
+      mainWindow.setBounds({ x, y, width: cw, height }, true);
+    }
   }
 });
 

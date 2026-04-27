@@ -1,6 +1,6 @@
 {
   "name": "float-todo-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "悬浮于桌面和网页之上的每日待办清单",
   "main": "src/main.js",
   "scripts": {
