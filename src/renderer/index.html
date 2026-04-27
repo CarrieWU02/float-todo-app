@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>Float Todo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── 标题栏 ─────────────────────────────────────────────────────────── -->
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-left">
+      <span class="app-icon">✦</span>
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="daily">每日</button>
+        <button class="view-tab" data-view="longterm">长期</button>
+      </div>
+    </div>
+    <div class="titlebar-right">
+      <button class="export-btn theme-btn" id="btn-theme" title="切换主题">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2v20M2 12h20" stroke-width="2"/>
+        </svg>
+        主题
+      </button>
+      <button class="export-btn" id="btn-export" title="导出本周诊断报告">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        周报
+      </button>
+      <button class="tb-btn" id="btn-pin" title="锁定位置">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="17" x2="12" y2="22"/>
+          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+        </svg>
+      </button>
+      <button class="tb-btn" id="btn-collapse" title="折叠">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+      <button class="tb-btn close" id="btn-close" title="隐藏">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 主体 ──────────────────────────────────────────────────────────── -->
+  <div class="main-body" id="main-body">
+
+    <!-- ══ 每日待办面板 ══════════════════════════════════════════════════ -->
+    <div class="panel" id="panel-daily">
+
+      <!-- 日期导航 -->
+      <div class="date-nav">
+        <button class="nav-btn" id="btn-prev">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div class="date-center">
+          <div class="date-label" id="date-label"></div>
+          <div class="date-full" id="date-full"></div>
+        </div>
+        <button class="nav-btn" id="btn-next">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 统计卡片 -->
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-card-num" id="stat-total">0</div>
+          <div class="stat-card-lbl">总计</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num is-done" id="stat-done">0</div>
+          <div class="stat-card-lbl">完成</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num is-pct" id="stat-pct">0%</div>
+          <div class="stat-card-lbl">完成率</div>
+        </div>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="progress-wrap">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="input-section">
+        <div class="input-row">
+          <input type="text" id="todo-input" class="todo-input"
+            placeholder="添加新任务，Enter 确认…" maxlength="200"
+            autocomplete="off" spellcheck="false" />
+          <button class="add-btn" id="btn-add">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-opts">
+          <select class="priority-sel" id="priority-sel">
+            <option value="none">无优先级</option>
+            <option value="high">🔴 高优先级</option>
+            <option value="medium">🟡 中优先级</option>
+            <option value="low">🟢 低优先级</option>
+          </select>
+          <input type="time" id="time-input" class="time-input" />
+        </div>
+      </div>
+
+      <!-- 筛选 -->
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">全部</button>
+        <button class="filter-tab" data-filter="pending">待完成</button>
+        <button class="filter-tab" data-filter="done">已完成</button>
+      </div>
+
+      <!-- 列表 -->
+      <div class="todo-list-wrap">
+        <ul class="todo-list" id="todo-list"></ul>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🌸</div>
+          <div class="empty-text">今日暂无任务，开始规划吧</div>
+        </div>
+      </div>
+
+      <!-- 底部 -->
+      <div class="footer">
+        <button class="footer-btn" id="btn-today">回到今天</button>
+        <button class="footer-btn danger" id="btn-clear-done">清除已完成</button>
+      </div>
+
+    </div><!-- /panel-daily -->
+
+    <!-- ══ 长期事项面板 ══════════════════════════════════════════════════ -->
+    <div class="panel hidden" id="panel-longterm">
+
+      <!-- 头部 -->
+      <div class="lt-header">
+        <div class="lt-header-info">
+          <span class="lt-title-text">长期事项</span>
+          <span class="lt-badge" id="lt-badge">0</span>
+        </div>
+        <div class="lt-header-stats">
+          <span class="lt-stat" id="lt-stat-total">0 项</span>
+          <span class="lt-stat-sep">·</span>
+          <span class="lt-stat is-done" id="lt-stat-done">0 已完成</span>
+        </div>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="progress-wrap">
+        <div class="progress-fill" id="lt-progress-fill"></div>
+      </div>
+
+      <!-- 分类筛选 -->
+      <div class="lt-category-row">
+        <button class="lt-cat-btn active" data-cat="all">全部</button>
+        <button class="lt-cat-btn" data-cat="ongoing">进行中</button>
+        <button class="lt-cat-btn" data-cat="done">已完成</button>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="input-section">
+        <div class="input-row">
+          <input type="text" id="lt-input" class="todo-input"
+            placeholder="添加长期事项，Enter 确认…" maxlength="200"
+            autocomplete="off" spellcheck="false" />
+          <button class="add-btn lt-add-btn" id="lt-btn-add">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-opts">
+          <select class="priority-sel" id="lt-priority-sel">
+            <option value="none">无优先级</option>
+            <option value="high">🔴 高优先级</option>
+            <option value="medium">🟡 中优先级</option>
+            <option value="low">🟢 低优先级</option>
+          </select>
+          <input type="text" id="lt-tag-input" class="lt-tag-input"
+            placeholder="标签（可选）" maxlength="12"
+            autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+
+      <!-- 列表 -->
+      <div class="todo-list-wrap lt-list-wrap">
+        <ul class="todo-list" id="lt-list"></ul>
+        <div class="empty-state" id="lt-empty-state">
+          <div class="empty-icon">🌿</div>
+          <div class="empty-text">暂无长期事项，添加一个吧</div>
+        </div>
+      </div>
+
+      <!-- 底部 -->
+      <div class="footer">
+        <span class="footer-hint">长期事项不受日期限制</span>
+        <button class="footer-btn danger" id="lt-btn-clear-done">清除已完成</button>
+      </div>
+
+    </div><!-- /panel-longterm -->
+
+  </div><!-- /main-body -->
+
+  <!-- ── 周报弹窗 ──────────────────────────────────────────────────────── -->
+  <div class="report-overlay hidden" id="report-overlay">
+    <div class="report-modal">
+      <div class="report-header">
+        <span class="report-title">📊 本周待办诊断</span>
+        <button class="report-close" id="report-close">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="report-body" id="report-body">
+        <!-- 由 JS 动态生成 -->
+      </div>
+      <div class="report-footer">
+        <button class="report-action-btn copy" id="report-copy">复制文本</button>
+        <button class="report-action-btn close-btn" id="report-close-btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+<script src="app.js"></script>
+</body>
+</html>
