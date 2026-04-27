@@ -1,10 +1,48 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, nativeImage, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, nativeImage, screen, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 // 忽略 EPIPE 错误（打包后无终端时 console.log 会触发）
 process.stdout.on('error', (err) => { if (err.code === 'EPIPE') return; });
 process.stderr.on('error', (err) => { if (err.code === 'EPIPE') return; });
+
+// ─── 自动更新 ────────────────────────────────────────────────────────────────
+let autoUpdater = null;
+function initAutoUpdater() {
+  // 开发模式下不检查更新
+  if (!app.isPackaged) return;
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.autoDownload = true;        // 有新版自动后台下载
+    autoUpdater.autoInstallOnAppQuit = true; // 退出时自动安装
+
+    autoUpdater.on('update-available', (info) => {
+      dialog.showMessageBox({
+        type: 'info',
+        title: '发现新版本',
+        message: `FloatTodo ${info.version} 正在后台下载，完成后下次启动自动安装。`,
+        buttons: ['好的'],
+      });
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+      dialog.showMessageBox({
+        type: 'info',
+        title: '更新就绪',
+        message: '新版本已下载完成，点击"立即重启"以完成更新。',
+        buttons: ['立即重启', '稍后'],
+        defaultId: 0,
+      }).then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall();
+      });
+    });
+
+    // 启动 5 秒后开始检查，避免影响启动速度
+    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
+  } catch (e) {
+    // electron-updater 加载失败时静默忽略，不影响正常使用
+  }
+}
 
 // ─── 数据路径 ────────────────────────────────────────────────────────────────
 const DATA_DIR = path.join(app.getPath('userData'), 'float-todo');
@@ -209,6 +247,7 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
+  initAutoUpdater();
 
   globalShortcut.register('CommandOrControl+Shift+T', () => {
     toggleWindow();

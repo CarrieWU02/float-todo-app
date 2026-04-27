@@ -8,7 +8,9 @@
     "dev": "electron . --no-sandbox --dev",
     "build": "electron-builder --mac",
     "build:win": "electron-builder --win",
-    "build:all": "electron-builder --mac --win"
+    "build:all": "electron-builder --mac --win",
+    "release": "electron-builder --mac --publish always",
+    "release:win": "electron-builder --win --publish always"
   },
   "keywords": [],
   "author": "wugengyue",
@@ -34,7 +36,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ]
     },
@@ -50,7 +55,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -60,6 +67,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "FloatTodo"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "CarrieWU02",
+      "repo": "float-todo-app"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3"
   }
 }
