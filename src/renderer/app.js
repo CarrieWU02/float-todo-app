@@ -919,12 +919,299 @@
     if (theme === 'mono') {
       app.dataset.theme = 'mono';
       btn?.classList.add('active');
-      btn?.setAttribute('title', '切换主题：当前简约黑白');
+      btn?.setAttribute('title', '切换主题（当前：简约黑白）');
     } else {
       delete app.dataset.theme;
       btn?.classList.remove('active');
-      btn?.setAttribute('title', '切换主题：当前浅粉薄荷');
+      btn?.setAttribute('title', '切换主题（当前：浅粉薄荷）');
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  大象待办 — 自动抓取 + AI 提取
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // 当前 AI 返回的结果列表（用于导入）
+  let xxResults = [];
+  // 状态监听器清理函数
+  let xxStatusOff = null;
+
+  /**
+   * 显示弹窗内指定区块，隐藏其余所有区块
+   * 区块列表：xx-input-section / xx-loading / xx-login-hint / xx-result / xx-error
+   */
+  function xxShowSection(id) {
+    ['xx-input-section', 'xx-loading', 'xx-login-hint', 'xx-result', 'xx-error'].forEach(sid => {
+      const el = document.getElementById(sid);
+      if (el) el.classList.toggle('hidden', sid !== id);
+    });
+  }
+
+  /** 打开大象弹窗 */
+  function openXiaoXiang() {
+    const overlay = document.getElementById('xx-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    xxShowSection('xx-input-section');
+    // 默认聚焦「开始抓取」按钮，方便键盘操作
+    setTimeout(() => document.getElementById('xx-fetch-btn')?.focus(), 80);
+  }
+
+  /** 关闭大象弹窗，并取消正在进行的抓取 */
+  function closeXiaoXiang() {
+    // 如果有正在运行的抓取，通知 main 进程取消
+    try { window.electronAPI.cancelXxFetch?.(); } catch (_) {}
+    // 清理状态监听器
+    if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+    document.getElementById('xx-overlay')?.classList.add('hidden');
+    xxShowSection('xx-input-section');
+  }
+
+  /** 渲染 AI 识别出的待办结果列表 */
+  function renderXxResults(items) {
+    xxResults = items || [];
+    const countEl = document.getElementById('xx-result-count');
+    const listEl  = document.getElementById('xx-result-list');
+    if (!listEl) return;
+
+    if (countEl) countEl.textContent = `识别到 ${xxResults.length} 条待办`;
+
+    listEl.innerHTML = '';
+    xxResults.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.className = 'xx-result-item';
+      div.dataset.idx = idx;
+
+      const priorityMap = { high: '高', medium: '中', low: '低' };
+      const priorityCls = item.priority || 'low';
+      const priorityText = priorityMap[priorityCls] || '低';
+
+      div.innerHTML = `
+        <label class="xx-item-label">
+          <input type="checkbox" class="xx-item-check" data-idx="${idx}" checked />
+          <div class="xx-item-body">
+            <div class="xx-item-text">${escHtml(item.text || '')}</div>
+            <div class="xx-item-meta">
+              <span class="xx-item-priority ${priorityCls}">${priorityText}优</span>
+              ${item.project ? `<span class="xx-item-project">${escHtml(item.project)}</span>` : ''}
+              ${item.context ? `<span class="xx-item-context">${escHtml(item.context)}</span>` : ''}
+            </div>
+          </div>
+        </label>`;
+
+      listEl.appendChild(div);
+    });
+
+    xxShowSection('xx-result');
+    updateXxImportBtnText();
+  }
+
+  /** 根据当前勾选数量更新导入按钮文字 */
+  function updateXxImportBtnText() {
+    const checked = document.querySelectorAll('.xx-item-check:checked').length;
+    const btn = document.getElementById('xx-import-btn');
+    if (btn) btn.textContent = checked > 0 ? `导入 ${checked} 条到今日待办` : '导入今日待办';
+  }
+
+  /** 设置 loading 区块的主/副文字 */
+  function xxSetLoadingText(main, sub) {
+    const mainEl = document.getElementById('xx-loading-text');
+    const subEl  = document.getElementById('xx-loading-sub');
+    if (mainEl) mainEl.textContent = main || '';
+    if (subEl)  subEl.textContent  = sub  || '';
+  }
+
+  /** 显示错误态，网络类错误自动附加 VPN 提示 */
+  function xxShowError(msg) {
+    const textEl = document.getElementById('xx-error-text');
+    const hintEl = document.getElementById('xx-error-hint');
+    if (textEl) textEl.textContent = msg || '未知错误';
+    // DNS/VPN 错误关键词 → 显示提示条
+    const isNetworkErr = msg && (
+      msg.includes('DNS') || msg.includes('VPN') || msg.includes('内网') ||
+      msg.includes('ERR_NAME_NOT_RESOLVED') || msg.includes('超时') ||
+      msg.includes('无法访问') || msg.includes('连接')
+    );
+    if (hintEl) hintEl.classList.toggle('hidden', !isNetworkErr);
+    xxShowSection('xx-error');
+  }
+
+  /**
+   * 执行自动抓取流程
+   * 状态机：input → loading(connecting/fetching/analyzing) → result | error | login-hint
+   */
+  async function startXxFetch() {
+    // 读取时间范围选择器（小时数）
+    const hoursSel = document.getElementById('xx-hours-sel');
+    const hoursBack = hoursSel ? parseInt(hoursSel.value, 10) || 24 : 24;
+
+    // 进入 loading 状态
+    xxShowSection('xx-loading');
+    xxSetLoadingText('正在连接大象…', '');
+
+    // 注册实时状态推送监听（主进程通过 ipc 推送 xx-fetch-status 事件）
+    if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+    if (window.electronAPI.onXxFetchStatus) {
+      xxStatusOff = window.electronAPI.onXxFetchStatus((status) => {
+        // main.js 推送字段：{ stage, msg }
+        switch (status.stage) {
+          case 'opening':
+          case 'connecting':
+            xxShowSection('xx-loading');
+            xxSetLoadingText('正在连接大象…', status.msg || '');
+            break;
+          case 'login':
+            // 需要扫码登录 → 切换到登录提示态
+            xxShowSection('xx-login-hint');
+            break;
+          case 'logged_in':
+            xxShowSection('xx-loading');
+            xxSetLoadingText('登录成功，正在抓取消息…', '');
+            break;
+          case 'fetching':
+            xxShowSection('xx-loading');
+            xxSetLoadingText('正在抓取消息…', status.msg || '');
+            break;
+          case 'analyzing':
+            xxShowSection('xx-loading');
+            xxSetLoadingText('AI 正在分析待办…', status.msg || '');
+            break;
+          case 'error':
+            if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+            xxShowError(status.msg || '抓取过程中出错');
+            break;
+        }
+      });
+    }
+
+    try {
+      const result = await window.electronAPI.fetchXiaoXiang({ hoursBack });
+
+      // 清理监听器
+      if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+
+      if (result.cancelled) {
+        xxShowSection('xx-input-section');
+        return;
+      }
+
+      if (result.error) {
+        xxShowError(result.error);
+        return;
+      }
+
+      if (!result.items || result.items.length === 0) {
+        xxShowError(`最近 ${hoursBack} 小时内未识别到待办事项，可以尝试扩大时间范围后重试。`);
+        return;
+      }
+
+      // 抓取统计写入提示
+      if (result.stats) {
+        const { sessions, messages } = result.stats;
+        const countEl = document.getElementById('xx-result-count');
+        if (countEl) countEl.textContent = `识别到 ${result.items.length} 条待办（共扫描 ${sessions} 个会话 · ${messages} 条消息）`;
+      }
+
+      renderXxResults(result.items);
+    } catch (e) {
+      if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+      // 用户主动取消不显示错误
+      if (e.message && e.message.includes('cancelled')) {
+        xxShowSection('xx-input-section');
+        return;
+      }
+      xxShowError(e.message || '未知错误');
+    }
+  }
+
+  // ── 大象弹窗事件绑定 ──────────────────────────────────────────────────────
+  function bindXiaoXiangEvents() {
+    // 打开弹窗按钮（标题栏）
+    document.getElementById('btn-xiaoxiang')?.addEventListener('click', openXiaoXiang);
+
+    // 关闭弹窗
+    document.getElementById('xx-close')?.addEventListener('click', closeXiaoXiang);
+
+    // 点击遮罩关闭
+    document.getElementById('xx-overlay')?.addEventListener('click', e => {
+      if (e.target === document.getElementById('xx-overlay')) closeXiaoXiang();
+    });
+
+    // ── 一键抓取按钮 ──
+    document.getElementById('xx-fetch-btn')?.addEventListener('click', startXxFetch);
+
+    // loading 态取消
+    document.getElementById('xx-cancel-btn')?.addEventListener('click', () => {
+      try { window.electronAPI.cancelXxFetch?.(); } catch (_) {}
+      if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+      xxShowSection('xx-input-section');
+    });
+
+    // login-hint 态取消
+    document.getElementById('xx-login-cancel-btn')?.addEventListener('click', () => {
+      try { window.electronAPI.cancelXxFetch?.(); } catch (_) {}
+      if (xxStatusOff) { xxStatusOff(); xxStatusOff = null; }
+      xxShowSection('xx-input-section');
+    });
+
+    // 全选 / 取消全选
+    document.getElementById('xx-select-all')?.addEventListener('click', () => {
+      const checks = document.querySelectorAll('.xx-item-check');
+      const allChecked = [...checks].every(c => c.checked);
+      checks.forEach(c => { c.checked = !allChecked; });
+      const btn = document.getElementById('xx-select-all');
+      if (btn) btn.textContent = allChecked ? '全选' : '取消全选';
+      updateXxImportBtnText();
+    });
+
+    // 勾选变化 → 更新导入按钮文字
+    document.getElementById('xx-result-list')?.addEventListener('change', e => {
+      if (e.target.classList.contains('xx-item-check')) {
+        const total   = document.querySelectorAll('.xx-item-check').length;
+        const checked = document.querySelectorAll('.xx-item-check:checked').length;
+        const selBtn  = document.getElementById('xx-select-all');
+        if (selBtn) selBtn.textContent = checked === total ? '取消全选' : '全选';
+        updateXxImportBtnText();
+      }
+    });
+
+    // 导入选中条目到今日待办
+    document.getElementById('xx-import-btn')?.addEventListener('click', () => {
+      const selected = [...document.querySelectorAll('.xx-item-check:checked')]
+        .map(c => parseInt(c.dataset.idx, 10))
+        .filter(i => !isNaN(i) && xxResults[i])
+        .map(i => xxResults[i]);
+
+      if (selected.length === 0) return;
+
+      if (!todos[currentDate]) todos[currentDate] = [];
+      selected.forEach(item => {
+        todos[currentDate].push({
+          id: genId(),
+          text: item.text.trim(),
+          done: false,
+          priority: item.priority || 'none',
+          time: '',
+          createdAt: Date.now(),
+        });
+      });
+
+      scheduleSave();
+      closeXiaoXiang();
+
+      // 切换回每日视图
+      currentView = 'daily';
+      document.querySelectorAll('.view-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.view === 'daily');
+      });
+      document.getElementById('panel-daily')?.classList.remove('hidden');
+      document.getElementById('panel-longterm')?.classList.add('hidden');
+      render();
+    });
+
+    // 重新抓取 / 错误返回
+    document.getElementById('xx-back-btn')?.addEventListener('click', () => xxShowSection('xx-input-section'));
+    document.getElementById('xx-error-back')?.addEventListener('click', () => xxShowSection('xx-input-section'));
   }
 
   // ── 初始化 ────────────────────────────────────────────────────────────────
@@ -935,6 +1222,7 @@
     if (savedTheme === 'mono') { currentTheme = 'mono'; applyTheme('mono'); }
     initDrag();
     bindEvents();
+    bindXiaoXiangEvents();
     render();
     setTimeout(() => document.getElementById('todo-input')?.focus(), 120);
   }

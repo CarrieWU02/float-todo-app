@@ -20,20 +20,31 @@
       </div>
     </div>
     <div class="titlebar-right">
-      <button class="export-btn theme-btn" id="btn-theme" title="切换主题">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2v20M2 12h20" stroke-width="2"/>
+      <button class="tb-btn theme-btn" id="btn-theme" title="切换主题：当前浅粉薄荷">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
-        主题
       </button>
-      <button class="export-btn" id="btn-export" title="导出本周诊断报告">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
+      <button class="tb-btn xiaoxiang-btn" id="btn-xiaoxiang" title="大象待办提取：用 AI 从聊天记录中提取待办">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        周报
+      </button>
+      <button class="tb-btn export-icon-btn" id="btn-export" title="本周待办诊断报告">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
+          <line x1="8" y1="8" x2="16" y2="8"/>
+          <line x1="8" y1="16" x2="12" y2="16"/>
+        </svg>
       </button>
       <button class="tb-btn" id="btn-pin" title="锁定位置">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -240,6 +251,112 @@
         <button class="report-action-btn copy" id="report-copy">复制文本</button>
         <button class="report-action-btn close-btn" id="report-close-btn">关闭</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── 大象待办弹窗（自动抓取模式） ──────────────────────────────────── -->
+  <div class="xx-overlay hidden" id="xx-overlay">
+    <div class="xx-modal">
+
+      <!-- 头部 -->
+      <div class="xx-header">
+        <span class="xx-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          大象待办提取
+        </span>
+        <div class="xx-header-actions">
+          <button class="xx-close-btn" id="xx-close">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 主操作区 -->
+      <div class="xx-input-section" id="xx-input-section">
+
+        <!-- 时间范围选择 -->
+        <div class="xx-time-row">
+          <span class="xx-time-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            抓取范围
+          </span>
+          <select id="xx-hours-sel" class="xx-hours-sel">
+            <option value="24" selected>最近 24 小时</option>
+            <option value="48">最近 48 小时</option>
+            <option value="72">最近 3 天</option>
+            <option value="120">最近 5 天</option>
+            <option value="168">最近 7 天</option>
+          </select>
+        </div>
+
+        <!-- 说明文字 -->
+        <div class="xx-auto-hint">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          自动扫描大象所有会话，AI 识别消息中的待办事项。首次使用需在浏览器中扫码登录，登录态长期保存。
+        </div>
+
+        <!-- 抓取按钮 -->
+        <button class="xx-analyze-btn" id="xx-fetch-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          开始抓取
+        </button>
+      </div>
+
+      <!-- 进行中状态（抓取/分析中） -->
+      <div class="xx-loading hidden" id="xx-loading">
+        <div class="xx-loading-spinner"></div>
+        <div class="xx-loading-text" id="xx-loading-text">正在连接大象…</div>
+        <div class="xx-loading-sub" id="xx-loading-sub"></div>
+        <button class="xx-cancel-btn" id="xx-cancel-btn">取消</button>
+      </div>
+
+      <!-- 登录提示态 -->
+      <div class="xx-login-hint hidden" id="xx-login-hint">
+        <div class="xx-login-icon">📱</div>
+        <div class="xx-login-title">请在弹出的窗口中扫码登录</div>
+        <div class="xx-login-sub">登录成功后自动继续抓取，无需任何操作</div>
+        <button class="xx-cancel-btn" id="xx-login-cancel-btn">取消</button>
+      </div>
+
+      <!-- 结果区 -->
+      <div class="xx-result hidden" id="xx-result">
+        <div class="xx-result-header">
+          <span class="xx-result-title" id="xx-result-count">识别到 0 条待办</span>
+          <button class="xx-select-all-btn" id="xx-select-all">全选</button>
+        </div>
+        <div class="xx-result-list" id="xx-result-list"></div>
+        <div class="xx-result-footer">
+          <button class="xx-import-btn" id="xx-import-btn">导入今日待办</button>
+          <button class="xx-back-btn" id="xx-back-btn">重新抓取</button>
+        </div>
+      </div>
+
+      <!-- 错误态 -->
+      <div class="xx-error hidden" id="xx-error">
+        <div class="xx-error-icon">⚠️</div>
+        <div class="xx-error-text" id="xx-error-text"></div>
+        <div class="xx-error-hint hidden" id="xx-error-hint">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          连接公司内网或 VPN 后点击"返回重试"
+        </div>
+        <button class="xx-back-btn" id="xx-error-back">返回重试</button>
+      </div>
+
     </div>
   </div>
 
